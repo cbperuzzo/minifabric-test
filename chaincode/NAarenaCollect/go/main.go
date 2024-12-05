@@ -43,7 +43,10 @@ func (s *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id
 	}
 
 	// Verificar se o NFT já existe
-	nftAsBytes, _ := ctx.GetStub().GetState(id)
+	nftAsBytes, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return fmt.Errorf("erro ao verificar a existência do NFT: %v", err)
+	}
 	if nftAsBytes != nil {
 		return fmt.Errorf("NFT com ID %s já existe", id)
 	}
@@ -58,8 +61,17 @@ func (s *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id
 		Propriedade:    propriedade,
 	}
 
-	nftAsBytes, _ = json.Marshal(nft)
-	return ctx.GetStub().PutState(id, nftAsBytes)
+	nftAsBytes, err = json.Marshal(nft)
+	if err != nil {
+		return fmt.Errorf("erro ao serializar o NFT: %v", err)
+	}
+
+	err = ctx.GetStub().PutState(id, nftAsBytes)
+	if err != nil {
+		return fmt.Errorf("erro ao salvar o NFT no ledger: %v", err)
+	}
+
+	return nil
 }
 
 // ConsultarNFT retorna os detalhes de um NFT
@@ -113,9 +125,17 @@ func (s *SmartContract) TransferirNFT(ctx contractapi.TransactionContextInterfac
 
 	// Atualizar o proprietário
 	nft.Propriedade = novoProprietario
-	nftAsBytes, _ = json.Marshal(nft)
+	nftAsBytes, err = json.Marshal(nft)
+	if err != nil {
+		return fmt.Errorf("erro ao serializar o NFT atualizado: %v", err)
+	}
 
-	return ctx.GetStub().PutState(id, nftAsBytes)
+	err = ctx.GetStub().PutState(id, nftAsBytes)
+	if err != nil {
+		return fmt.Errorf("erro ao salvar o NFT atualizado no ledger: %v", err)
+	}
+
+	return nil
 }
 
 // ListarNFTs permite listar NFTs baseados no proprietário
@@ -130,7 +150,7 @@ func (s *SmartContract) ListarNFTs(ctx contractapi.TransactionContextInterface, 
 	for resultsIterator.HasNext() {
 		queryResponse, err := resultsIterator.Next()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("erro ao iterar sobre os resultados: %v", err)
 		}
 
 		var nft NFT
@@ -151,11 +171,11 @@ func main() {
 	smartContract := new(SmartContract)
 	chaincode, err := contractapi.NewChaincode(smartContract)
 	if err != nil {
-		fmt.Printf("Erro ao criar o chaincode: %v", err)
+		fmt.Printf("Erro ao criar o chaincode: %v\n", err)
 		return
 	}
 
 	if err := chaincode.Start(); err != nil {
-		fmt.Printf("Erro ao iniciar o chaincode: %v", err)
+		fmt.Printf("Erro ao iniciar o chaincode: %v\n", err)
 	}
 }

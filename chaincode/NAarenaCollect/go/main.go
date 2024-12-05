@@ -147,19 +147,6 @@ func (s *SmartContract) ListarNFTs(ctx contractapi.TransactionContextInterface, 
 	return nfts, nil
 }
 
-// DestruirNFT remove um NFT do estado
-func (s *SmartContract) DestruirNFT(ctx contractapi.TransactionContextInterface, id string) error {
-	nftAsBytes, err := ctx.GetStub().GetState(id)
-	if err != nil {
-		return fmt.Errorf("erro ao recuperar o NFT: %v", err)
-	}
-	if nftAsBytes == nil {
-		return fmt.Errorf("NFT com ID %s não encontrado", id)
-	}
-
-	return ctx.GetStub().DelState(id)
-}
-
 func main() {
 	smartContract := new(SmartContract)
 	chaincode, err := contractapi.NewChaincode(smartContract)

@@ -48,6 +48,3 @@ fabric:
 
   # Nome da rede
   netname: "nftnetwork"
-
-  # Configurações de containers
-  container_options: "--restart=always --log-opt max-size=10m --log-opt max-file=3"

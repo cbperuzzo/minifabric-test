@@ -46,7 +46,7 @@ func (sc *SmartContract) CheckAccess(ctx contractapi.TransactionContextInterface
 // CriarNFT cria um novo NFT para um evento ou partida
 func (sc *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, propriedade string) error {
 	// Verificar se a organização emissora é permitida
-	if err := sc.CheckAccess(ctx, "OrgEmissoraMSP"); err != nil {
+	if err := sc.CheckAccess(ctx, "orgemissora.nftnetwork.com"); err != nil {
 		return err // Retorna erro se o acesso for negado
 	}
 

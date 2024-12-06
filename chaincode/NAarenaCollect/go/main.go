@@ -7,9 +7,6 @@ import (
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
-// Nome da organização emissora (substitua pelo MSP ID real da sua organização emissora)
-const EmissorMSP = "OrgEmissoraMSP"
-
 // SmartContract define a estrutura do chaincode
 type SmartContract struct {
 	contractapi.Contract
@@ -25,26 +22,37 @@ type NFT struct {
 	Propriedade    string `json:"propriedade"`    // Proprietário atual do NFT
 }
 
-func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error {
+// Init inicializa o chaincode
+func (sc *SmartContract) Init(ctx contractapi.TransactionContextInterface) error {
 	fmt.Println("Chaincode SmartContract foi inicializado")
 	return nil
 }
 
-// CriarNFT cria um novo NFT para um evento ou partida
-func (s *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, propriedade string) error {
-	// Validação de parâmetros
-	if id == "" || evento == "" || estadio == "" || clubeCasa == "" || clubeVisitante == "" || propriedade == "" {
-		return fmt.Errorf("todos os campos devem ser preenchidos")
-	}
-
-	// Verificar se o cliente pertence à organização emissora
+// CheckAccess verifica se a organização do cliente é permitida
+func (sc *SmartContract) CheckAccess(ctx contractapi.TransactionContextInterface, allowedOrg string) error {
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("não foi possível recuperar o MSPID do cliente: %v", err)
 	}
 
-	if clientMSPID != EmissorMSP {
-		return fmt.Errorf("apenas a organização emissora (%s) pode criar NFTs", EmissorMSP)
+	// Verificar se o MSP ID do cliente corresponde à organização permitida
+	if clientMSPID != allowedOrg {
+		return fmt.Errorf("acesso negado: apenas a organização %s pode executar esta operação", allowedOrg)
+	}
+
+	return nil
+}
+
+// CriarNFT cria um novo NFT para um evento ou partida
+func (sc *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, propriedade string) error {
+	// Verificar se a organização emissora é permitida
+	if err := sc.CheckAccess(ctx, "OrgEmissoraMSP"); err != nil {
+		return err // Retorna erro se o acesso for negado
+	}
+
+	// Validação de parâmetros
+	if id == "" || evento == "" || estadio == "" || clubeCasa == "" || clubeVisitante == "" || propriedade == "" {
+		return fmt.Errorf("todos os campos devem ser preenchidos")
 	}
 
 	// Verificar se o NFT já existe
@@ -80,7 +88,7 @@ func (s *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id
 }
 
 // ConsultarNFT retorna os detalhes de um NFT
-func (s *SmartContract) ConsultarNFT(ctx contractapi.TransactionContextInterface, id string) (*NFT, error) {
+func (sc *SmartContract) ConsultarNFT(ctx contractapi.TransactionContextInterface, id string) (*NFT, error) {
 	nftAsBytes, err := ctx.GetStub().GetState(id)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao recuperar o NFT: %v", err)
@@ -99,7 +107,7 @@ func (s *SmartContract) ConsultarNFT(ctx contractapi.TransactionContextInterface
 }
 
 // TransferirNFT transfere a propriedade de um NFT entre usuários
-func (s *SmartContract) TransferirNFT(ctx contractapi.TransactionContextInterface, id, novoProprietario string) error {
+func (sc *SmartContract) TransferirNFT(ctx contractapi.TransactionContextInterface, id, novoProprietario string) error {
 	if novoProprietario == "" {
 		return fmt.Errorf("o novo proprietário não pode ser vazio")
 	}
@@ -144,7 +152,7 @@ func (s *SmartContract) TransferirNFT(ctx contractapi.TransactionContextInterfac
 }
 
 // ListarNFTs permite listar NFTs baseados no proprietário
-func (s *SmartContract) ListarNFTs(ctx contractapi.TransactionContextInterface, proprietario string) ([]NFT, error) {
+func (sc *SmartContract) ListarNFTs(ctx contractapi.TransactionContextInterface, proprietario string) ([]NFT, error) {
 	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
 	if err != nil {
 		return nil, fmt.Errorf("erro ao listar NFTs: %v", err)
@@ -172,20 +180,8 @@ func (s *SmartContract) ListarNFTs(ctx contractapi.TransactionContextInterface, 
 	return nfts, nil
 }
 
-func main() {
-	smartContract := new(SmartContract)
-	chaincode, err := contractapi.NewChaincode(smartContract)
-	if err != nil {
-		fmt.Printf("Erro ao criar o chaincode: %v\n", err)
-		return
-	}
-
-	if err := chaincode.Start(); err != nil {
-		fmt.Printf("Erro ao iniciar o chaincode: %v\n", err)
-	}
-}
-
-func (s *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) error {
+// Invoke roteia a chamada para a função apropriada
+func (sc *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) error {
 	// Obtém o nome da função sendo chamada e os argumentos
 	fn, args := ctx.GetStub().GetFunctionAndParameters()
 
@@ -195,13 +191,13 @@ func (s *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) erro
 		if len(args) < 6 {
 			return fmt.Errorf("CriarNFT requer 6 argumentos: id, evento, estadio, clubeCasa, clubeVisitante, propriedade")
 		}
-		return s.CriarNFT(ctx, args[0], args[1], args[2], args[3], args[4], args[5])
+		return sc.CriarNFT(ctx, args[0], args[1], args[2], args[3], args[4], args[5])
 
 	case "ConsultarNFT":
 		if len(args) < 1 {
 			return fmt.Errorf("ConsultarNFT requer 1 argumento: id")
 		}
-		nft, err := s.ConsultarNFT(ctx, args[0])
+		nft, err := sc.ConsultarNFT(ctx, args[0])
 		if err != nil {
 			return err
 		}
@@ -217,13 +213,13 @@ func (s *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) erro
 		if len(args) < 2 {
 			return fmt.Errorf("TransferirNFT requer 2 argumentos: id, novoProprietario")
 		}
-		return s.TransferirNFT(ctx, args[0], args[1])
+		return sc.TransferirNFT(ctx, args[0], args[1])
 
 	case "ListarNFTs":
 		if len(args) < 1 {
 			return fmt.Errorf("ListarNFTs requer 1 argumento: proprietario")
 		}
-		nfts, err := s.ListarNFTs(ctx, args[0])
+		nfts, err := sc.ListarNFTs(ctx, args[0])
 		if err != nil {
 			return err
 		}
@@ -237,5 +233,18 @@ func (s *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) erro
 
 	default:
 		return fmt.Errorf("função desconhecida: %s", fn)
+	}
+}
+
+func main() {
+	smartContract := new(SmartContract)
+	chaincode, err := contractapi.NewChaincode(smartContract)
+	if err != nil {
+		fmt.Printf("Erro ao criar o chaincode: %v\n", err)
+		return
+	}
+
+	if err := chaincode.Start(); err != nil {
+		fmt.Printf("Erro ao iniciar o chaincode: %v\n", err)
 	}
 }

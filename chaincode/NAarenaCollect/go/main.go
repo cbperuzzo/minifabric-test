@@ -25,6 +25,11 @@ type NFT struct {
 	Propriedade    string `json:"propriedade"`    // Proprietário atual do NFT
 }
 
+func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error {
+	fmt.Println("Chaincode SmartContract foi inicializado")
+	return nil
+}
+
 // CriarNFT cria um novo NFT para um evento ou partida
 func (s *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, propriedade string) error {
 	// Validação de parâmetros
@@ -177,5 +182,60 @@ func main() {
 
 	if err := chaincode.Start(); err != nil {
 		fmt.Printf("Erro ao iniciar o chaincode: %v\n", err)
+	}
+}
+
+func (s *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) error {
+	// Obtém o nome da função sendo chamada e os argumentos
+	fn, args := ctx.GetStub().GetFunctionAndParameters()
+
+	// Roteia para a função apropriada
+	switch fn {
+	case "CriarNFT":
+		if len(args) < 6 {
+			return fmt.Errorf("CriarNFT requer 6 argumentos: id, evento, estadio, clubeCasa, clubeVisitante, propriedade")
+		}
+		return s.CriarNFT(ctx, args[0], args[1], args[2], args[3], args[4], args[5])
+
+	case "ConsultarNFT":
+		if len(args) < 1 {
+			return fmt.Errorf("ConsultarNFT requer 1 argumento: id")
+		}
+		nft, err := s.ConsultarNFT(ctx, args[0])
+		if err != nil {
+			return err
+		}
+
+		// Converte o NFT para JSON e retorna o resultado
+		nftAsBytes, err := json.Marshal(nft)
+		if err != nil {
+			return fmt.Errorf("erro ao serializar o NFT: %v", err)
+		}
+		return ctx.GetStub().SetEvent("ConsultarNFTResult", nftAsBytes)
+
+	case "TransferirNFT":
+		if len(args) < 2 {
+			return fmt.Errorf("TransferirNFT requer 2 argumentos: id, novoProprietario")
+		}
+		return s.TransferirNFT(ctx, args[0], args[1])
+
+	case "ListarNFTs":
+		if len(args) < 1 {
+			return fmt.Errorf("ListarNFTs requer 1 argumento: proprietario")
+		}
+		nfts, err := s.ListarNFTs(ctx, args[0])
+		if err != nil {
+			return err
+		}
+
+		// Converte a lista de NFTs para JSON e retorna o resultado
+		nftsAsBytes, err := json.Marshal(nfts)
+		if err != nil {
+			return fmt.Errorf("erro ao serializar os NFTs: %v", err)
+		}
+		return ctx.GetStub().SetEvent("ListarNFTsResult", nftsAsBytes)
+
+	default:
+		return fmt.Errorf("função desconhecida: %s", fn)
 	}
 }

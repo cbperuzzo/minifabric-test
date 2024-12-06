@@ -19,6 +19,7 @@ type NFT struct {
 	Estadio        string `json:"estadio"`        // Nome do estádio onde ocorreu
 	ClubeCasa      string `json:"clubeCasa"`      // Nome do clube da casa
 	ClubeVisitante string `json:"clubeVisitante"` // Nome do clube visitante
+	DataPartida    string `json:"dataPartida"`    // Data da partida ou evento
 	Propriedade    string `json:"propriedade"`    // Proprietário atual do NFT
 }
 
@@ -35,7 +36,6 @@ func (sc *SmartContract) CheckAccess(ctx contractapi.TransactionContextInterface
 		return fmt.Errorf("não foi possível recuperar o MSPID do cliente: %v", err)
 	}
 
-	// Verificar se o MSP ID do cliente corresponde à organização permitida
 	if clientMSPID != allowedOrg {
 		return fmt.Errorf("client MSPID: %s, expected MSPID: %s", clientMSPID, allowedOrg)
 	}
@@ -44,14 +44,14 @@ func (sc *SmartContract) CheckAccess(ctx contractapi.TransactionContextInterface
 }
 
 // CriarNFT cria um novo NFT para um evento ou partida
-func (sc *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, propriedade string) error {
+func (sc *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, dataPartida, propriedade string) error {
 	// Verificar se a organização emissora é permitida
 	if err := sc.CheckAccess(ctx, "orgemissora-nftnetwork-com"); err != nil {
 		return err // Retorna erro se o acesso for negado
 	}
 
 	// Validação de parâmetros
-	if id == "" || evento == "" || estadio == "" || clubeCasa == "" || clubeVisitante == "" || propriedade == "" {
+	if id == "" || evento == "" || estadio == "" || clubeCasa == "" || clubeVisitante == "" || dataPartida == "" || propriedade == "" {
 		return fmt.Errorf("todos os campos devem ser preenchidos")
 	}
 
@@ -71,6 +71,7 @@ func (sc *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, i
 		Estadio:        estadio,
 		ClubeCasa:      clubeCasa,
 		ClubeVisitante: clubeVisitante,
+		DataPartida:    dataPartida,
 		Propriedade:    propriedade,
 	}
 
@@ -178,10 +179,10 @@ func (sc *SmartContract) Invoke(ctx contractapi.TransactionContextInterface) err
 	// Roteia para a função apropriada
 	switch fn {
 	case "CriarNFT":
-		if len(args) < 6 {
-			return fmt.Errorf("CriarNFT requer 6 argumentos: id, evento, estadio, clubeCasa, clubeVisitante, propriedade")
+		if len(args) < 7 {
+			return fmt.Errorf("CriarNFT requer 7 argumentos: id, evento, estadio, clubeCasa, clubeVisitante, dataPartida, propriedade")
 		}
-		return sc.CriarNFT(ctx, args[0], args[1], args[2], args[3], args[4], args[5])
+		return sc.CriarNFT(ctx, args[0], args[1], args[2], args[3], args[4], args[5], args[6])
 
 	case "ConsultarNFT":
 		if len(args) < 1 {

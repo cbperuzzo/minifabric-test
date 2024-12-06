@@ -46,7 +46,7 @@ func (sc *SmartContract) CheckAccess(ctx contractapi.TransactionContextInterface
 // CriarNFT cria um novo NFT para um evento ou partida
 func (sc *SmartContract) CriarNFT(ctx contractapi.TransactionContextInterface, id, evento, estadio, clubeCasa, clubeVisitante, propriedade string) error {
 	// Verificar se a organização emissora é permitida
-	if err := sc.CheckAccess(ctx, "orgemissora.nftnetwork.com"); err != nil {
+	if err := sc.CheckAccess(ctx, "orgemissora-nftnetwork-com"); err != nil {
 		return err // Retorna erro se o acesso for negado
 	}
 
@@ -124,16 +124,6 @@ func (sc *SmartContract) TransferirNFT(ctx contractapi.TransactionContextInterfa
 	err = json.Unmarshal(nftAsBytes, &nft)
 	if err != nil {
 		return fmt.Errorf("erro ao deserializar o NFT: %v", err)
-	}
-
-	// Verificar se o cliente é o proprietário atual
-	clientID, err := ctx.GetClientIdentity().GetID()
-	if err != nil {
-		return fmt.Errorf("não foi possível recuperar a identidade do cliente: %v", err)
-	}
-
-	if nft.Propriedade != clientID {
-		return fmt.Errorf("somente o proprietário atual pode transferir este NFT")
 	}
 
 	// Atualizar o proprietário

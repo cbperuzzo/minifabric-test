@@ -35,6 +35,8 @@ func (sc *SmartContract) CheckAccess(ctx contractapi.TransactionContextInterface
 		return fmt.Errorf("não foi possível recuperar o MSPID do cliente: %v", err)
 	}
 
+	fmt.Printf("Client MSPID: %s, Expected MSPID: %s\n", clientMSPID, allowedOrg)
+
 	// Verificar se o MSP ID do cliente corresponde à organização permitida
 	if clientMSPID != allowedOrg {
 		return fmt.Errorf("acesso negado: apenas a organização %s pode executar esta operação", allowedOrg)
